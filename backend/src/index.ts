@@ -1,6 +1,4 @@
-import { createServer } from 'node:http';
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import path from 'node:path';
+import { createServer, type ServerResponse } from 'node:http';
 import { env } from './env.js';
 import { randomToken, sign, verifySigned } from './crypto.js';
 import { buildGoogleAuthUrl, exchangeCodeForTokens, fetchGoogleUserInfo } from './google-oauth.js';
@@ -8,19 +6,6 @@ import { store } from './store.js';
 
 const SESSION_COOKIE = 'app_session';
 const OAUTH_STATE_COOKIE = 'oauth_state';
-const distDir = path.resolve(process.cwd(), 'dist');
-
-const mimeTypes: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.ico': 'image/x-icon',
-};
 
 function parseCookies(rawCookie: string | undefined): Record<string, string> {
   if (!rawCookie) return {};
@@ -40,25 +25,35 @@ function setCookie(name: string, value: string, options: { maxAgeSeconds?: numbe
   return parts.join('; ');
 }
 
-function json(res: import('node:http').ServerResponse, status: number, body: unknown) {
+function json(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(body));
 }
 
-function safeResolveStaticPath(requestPath: string): string | null {
-  const normalized = requestPath === '/' ? '/index.html' : requestPath;
-  const absolutePath = path.resolve(distDir, `.${normalized}`);
-  if (!absolutePath.startsWith(distDir)) return null;
-  if (!existsSync(absolutePath)) return null;
-  if (!statSync(absolutePath).isFile()) return null;
-  return absolutePath;
+function applyCors(res: ServerResponse, origin: string | undefined): void {
+  const allowedOrigin = env.FRONTEND_BASE_URL;
+  if (origin && origin === allowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  }
 }
 
 const server = createServer(async (req, res) => {
   try {
     if (!req.url || !req.method) return;
 
-    const requestUrl = new URL(req.url, env.APP_BASE_URL);
+    applyCors(res, req.headers.origin);
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    const requestUrl = new URL(req.url, 'http://localhost');
     const cookies = parseCookies(req.headers.cookie);
 
     if (requestUrl.pathname === '/api/auth/google/login' && req.method === 'GET') {
@@ -77,14 +72,14 @@ const server = createServer(async (req, res) => {
       const callbackError = requestUrl.searchParams.get('error');
 
       if (callbackError) {
-        res.writeHead(302, { Location: '/?authError=google_denied' });
+        res.writeHead(302, { Location: `${env.FRONTEND_BASE_URL}/?authError=google_denied` });
         res.end();
         return;
       }
 
       const storedState = cookies[OAUTH_STATE_COOKIE] ? verifySigned(cookies[OAUTH_STATE_COOKIE]) : null;
       if (!code || !state || !storedState || state !== storedState) {
-        res.writeHead(302, { Location: '/?authError=invalid_state' });
+        res.writeHead(302, { Location: `${env.FRONTEND_BASE_URL}/?authError=invalid_state` });
         res.end();
         return;
       }
@@ -102,7 +97,7 @@ const server = createServer(async (req, res) => {
 
       const session = store.createSession(userInfo.sub);
       res.writeHead(302, {
-        Location: '/?auth=success',
+        Location: `${env.FRONTEND_BASE_URL}/?auth=success`,
         'Set-Cookie': [
           setCookie(SESSION_COOKIE, sign(session.sessionId), { maxAgeSeconds: 60 * 60 * 24 * 7 }),
           setCookie(OAUTH_STATE_COOKIE, '', { clear: true }),
@@ -146,29 +141,13 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === 'GET') {
-      const staticFile = safeResolveStaticPath(requestUrl.pathname);
-      if (staticFile) {
-        const ext = path.extname(staticFile).toLowerCase();
-        res.writeHead(200, { 'Content-Type': mimeTypes[ext] ?? 'application/octet-stream' });
-        res.end(readFileSync(staticFile));
-        return;
-      }
-
-      const indexPath = path.join(distDir, 'index.html');
-      if (existsSync(indexPath)) {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(readFileSync(indexPath, 'utf8'));
-        return;
-      }
-    }
-
-    json(res, 404, { error: 'Not found' });
+    json(res, 404, { error: 'Not Found' });
   } catch (error) {
-    json(res, 500, { error: error instanceof Error ? error.message : 'Unexpected error' });
+    const message = error instanceof Error ? error.message : 'Unknown server error';
+    json(res, 500, { error: message });
   }
 });
 
 server.listen(env.PORT, () => {
-  console.log(`Auth server listening on http://localhost:${env.PORT}`);
+  console.log(`Backend listening on http://localhost:${env.PORT}`);
 });

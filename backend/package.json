@@ -1,0 +1,11 @@
+{
+  "name": "paginadetestes-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --experimental-strip-types src/index.ts",
+    "build": "node -e \"console.log('backend build: no-op')\"",
+    "start": "node --experimental-strip-types src/index.ts"
+  }
+}
