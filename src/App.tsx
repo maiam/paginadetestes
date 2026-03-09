@@ -251,15 +251,15 @@ export default function Example() {
           </div>
         </div>
 
-        <header className="relative bg-white shadow-sm">
+        <header className="relative bg-white shadow-sm dark:bg-zinc-900">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
               Dashboard
             </h1>
           </div>
         </header>
         <main>
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 bg-white dark:bg-zinc-900">
             {/* Your content */}
           </div>
         </main>
