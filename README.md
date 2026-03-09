@@ -75,7 +75,8 @@ npm run build
 - Env vars:
   - `NODE_ENV=production`
   - `PORT=10000`
-  - `FRONTEND_BASE_URL=https://SEU-FRONTEND.onrender.com`
+  - `APP_BASE_URL=https://SEU-BACKEND.onrender.com`
+  - `FRONTEND_URL=https://SEU-FRONTEND.onrender.com`
   - `GOOGLE_CLIENT_ID=...`
   - `GOOGLE_CLIENT_SECRET=...`
   - `GOOGLE_OAUTH_REDIRECT_URI=https://SEU-BACKEND.onrender.com/api/auth/google/callback`
@@ -84,8 +85,9 @@ npm run build
 
 ## Próximo passo (OAuth/Calendar)
 
-A estrutura do backend já está pronta para evoluir com módulos dedicados em `backend/src`, por exemplo:
+A estrutura já está preparada para evoluir a autenticação com módulos dedicados, por exemplo:
 
-- `backend/src/auth/*`
-- `backend/src/google/*`
-- `backend/src/calendar/*`
+- `backend/src/lib/env.ts` (env centralizado)
+- `backend/src/lib/cors.ts` (origens permitidas para Render/local)
+- `backend/src/lib/session.ts` (cookies HttpOnly com flags seguras)
+- `frontend/src/lib/api.ts` (camada HTTP usando `VITE_API_BASE_URL`)
