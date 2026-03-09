@@ -19,7 +19,7 @@ const navigation = [
   { name: "Dashboard", href: "#", current: true },
   { name: "Team", href: "#", current: false },
   { name: "Projects", href: "#", current: false },
-  { name: "Calendar", href: "#", current: false },
+  { name: "Agenda", href: "#", current: false },
   { name: "Reports", href: "#", current: false },
 ];
 const userNavigation = [
@@ -251,7 +251,7 @@ export default function Example() {
           </div>
         </div>
 
-        <header className="relative bg-white shadow-sm dark:bg-zinc-900">
+        <header className="relative bg-white dark:bg-zinc-900">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
             <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
               Dashboard
