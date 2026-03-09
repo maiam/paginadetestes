@@ -1,95 +1,91 @@
-# Página de Testes — Base de autenticação Google OAuth 2.0
+# Página de Testes — Frontend/Backend separados
 
-## Auditoria do projeto (estado encontrado)
+## Estrutura
 
-- O repositório era **frontend-only** com **Vite + React + TypeScript**.
-- Não havia backend Node/Express/Fastify/Next.
-- Não havia autenticação real; apenas dados mockados no header.
-- Não havia sessão/cookie/JWT implementado.
-- Não havia banco de dados.
-- Deploy no Render não estava estruturado para backend.
+```text
+/
+├─ frontend/            # React + Vite + TypeScript
+│  ├─ src/
+│  ├─ public/
+│  ├─ package.json
+│  └─ ...
+├─ backend/             # Node.js + TypeScript (API/OAuth)
+│  ├─ src/
+│  ├─ package.json
+│  ├─ .env.example
+│  └─ ...
+├─ package.json         # scripts de orquestração
+├─ .gitignore
+└─ README.md
+```
 
-## Arquitetura implementada nesta etapa
+## Rodando localmente
 
-### Visão geral
+### 1) Instalar dependências
 
-- Mantido o frontend React/Vite.
-- Adicionado um backend Node (TypeScript) em `server/`.
-- Fluxo OAuth 2.0 Authorization Code implementado no servidor.
-- Sessão do app por cookie `HttpOnly` assinado.
-- Tokens Google ficam apenas no backend (criptografados em repouso no arquivo local `data/auth-store.json`).
+```bash
+npm ci --prefix frontend
+npm ci --prefix backend
+```
 
-### Fluxo de login
+### 2) Variáveis de ambiente
 
-1. Frontend chama `GET /api/auth/google/login`.
-2. Backend gera `state`, salva em cookie assinado e redireciona ao Google.
-3. Google retorna em `GET /api/auth/google/callback` com `code`.
-4. Backend valida `state`, troca `code` por tokens, consulta `userinfo`.
-5. Backend persiste usuário/tokens e cria sessão do app.
-6. Frontend consulta `GET /api/auth/me` para refletir estado autenticado.
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
 
-### Endpoints internos
+Preencha as credenciais Google no `backend/.env`.
 
-- `GET /api/auth/google/login`
-- `GET /api/auth/google/callback`
-- `GET /api/auth/me`
-- `POST /api/auth/logout`
+### 3) Desenvolvimento
 
-### Segurança adotada
+Rodar os dois serviços:
 
-- `state` OAuth validado no callback.
-- `client_secret` somente no backend.
-- Cookie de sessão com `HttpOnly`, `SameSite=Lax` e `Secure` em produção.
-- Sessão assinada por HMAC.
-- Tokens armazenados no backend e criptografados (AES-256-GCM).
+```bash
+npm run dev
+```
 
-## Configuração do Google Cloud
+Ou separadamente:
 
-1. Abra [Google Cloud Console](https://console.cloud.google.com/).
-2. Crie um projeto (ou selecione um existente).
-3. Em **APIs & Services > OAuth consent screen**:
-   - Configure nome do app, email de suporte e domínio.
-   - Adicione escopos necessários (mínimo: `openid`, `profile`, `email`; e já pode manter calendar para próxima fase).
-   - Adicione usuários de teste (enquanto estiver em Testing).
-4. Em **Credentials > Create Credentials > OAuth client ID**:
-   - Tipo: **Web application**.
-   - Authorized redirect URIs:
-     - Local: `http://localhost:8787/api/auth/google/callback`
-     - Produção: `https://SEU-APP.onrender.com/api/auth/google/callback`
+```bash
+npm run dev:frontend
+npm run dev:backend
+```
 
-## Configuração no Render
+## Build
 
-1. Faça deploy deste repositório no Render.
-2. Configure build/start:
-   - Build Command: `npm ci && npm run build`
-   - Start Command: `npm run start`
-3. Defina variáveis de ambiente:
-   - `NODE_ENV=production`
-   - `PORT=10000` (ou padrão do Render)
-   - `APP_BASE_URL=https://SEU-APP.onrender.com`
-   - `GOOGLE_CLIENT_ID=...`
-   - `GOOGLE_CLIENT_SECRET=...`
-   - `GOOGLE_OAUTH_REDIRECT_URI=https://SEU-APP.onrender.com/api/auth/google/callback`
-   - `SESSION_SECRET=<valor longo e aleatório>`
-   - `GOOGLE_OAUTH_SCOPES=openid profile email https://www.googleapis.com/auth/calendar`
+```bash
+npm run build
+```
 
-> Observação: a persistência atual em arquivo funciona para base inicial, mas para produção robusta/multi-instância recomenda-se migrar para Postgres/Redis na próxima etapa.
+## Deploy no Render (separado)
 
-## Execução local
+### Frontend service
 
-1. Copie `.env.example` para `.env` e preencha credenciais Google.
-2. Instale dependências:
-   ```bash
-   npm ci
-   ```
-3. Execute:
-   ```bash
-   npm run dev
-   ```
-4. Acesse `http://localhost:5173`.
+- Root Directory: `frontend`
+- Build Command: `npm ci && npm run build`
+- Start Command: `npm run preview -- --host 0.0.0.0 --port $PORT`
+- Env opcional: `VITE_API_BASE_URL=https://SEU-BACKEND.onrender.com`
 
-## Scripts
+### Backend service
 
-- `npm run dev` — sobe backend (8787) + frontend Vite (5173)
-- `npm run build` — build frontend + compilação backend
-- `npm run start` — inicia backend compilado (produção)
+- Root Directory: `backend`
+- Build Command: `npm ci && npm run build`
+- Start Command: `npm run start`
+- Env vars:
+  - `NODE_ENV=production`
+  - `PORT=10000`
+  - `FRONTEND_BASE_URL=https://SEU-FRONTEND.onrender.com`
+  - `GOOGLE_CLIENT_ID=...`
+  - `GOOGLE_CLIENT_SECRET=...`
+  - `GOOGLE_OAUTH_REDIRECT_URI=https://SEU-BACKEND.onrender.com/api/auth/google/callback`
+  - `SESSION_SECRET=...`
+  - `GOOGLE_OAUTH_SCOPES=openid profile email https://www.googleapis.com/auth/calendar`
+
+## Próximo passo (OAuth/Calendar)
+
+A estrutura do backend já está pronta para evoluir com módulos dedicados em `backend/src`, por exemplo:
+
+- `backend/src/auth/*`
+- `backend/src/google/*`
+- `backend/src/calendar/*`

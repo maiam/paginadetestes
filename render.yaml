@@ -1,7 +1,8 @@
 services:
   - type: web
-    name: paginadetestes
+    name: paginadetestes-backend
     env: node
+    rootDir: backend
     plan: starter
     buildCommand: npm ci && npm run build
     startCommand: npm run start
@@ -11,7 +12,7 @@ services:
         value: production
       - key: PORT
         value: 10000
-      - key: APP_BASE_URL
+      - key: FRONTEND_BASE_URL
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
@@ -23,3 +24,15 @@ services:
         generateValue: true
       - key: GOOGLE_OAUTH_SCOPES
         value: openid profile email https://www.googleapis.com/auth/calendar
+
+  - type: web
+    name: paginadetestes-frontend
+    env: node
+    rootDir: frontend
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm run preview -- --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false

@@ -1,10 +1,10 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 export type AppEnv = {
   NODE_ENV: 'development' | 'production' | 'test';
   PORT: number;
-  APP_BASE_URL: string;
+  FRONTEND_BASE_URL: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   GOOGLE_OAUTH_REDIRECT_URI: string;
@@ -26,7 +26,8 @@ function loadDotEnvFile() {
 
     const key = trimmed.slice(0, separator).trim();
     const rawValue = trimmed.slice(separator + 1).trim();
-    const value = rawValue.replace(/^['""]|['""]$/g, '');
+    const value = rawValue.replace(/^['\"]|['\"]$/g, '');
+
     if (!(key in process.env)) {
       process.env[key] = value;
     }
@@ -46,7 +47,7 @@ loadDotEnvFile();
 export const env: AppEnv = {
   NODE_ENV: (process.env.NODE_ENV as AppEnv['NODE_ENV']) ?? 'development',
   PORT: Number(process.env.PORT ?? 8787),
-  APP_BASE_URL: required('APP_BASE_URL'),
+  FRONTEND_BASE_URL: process.env.FRONTEND_BASE_URL ?? 'http://localhost:5173',
   GOOGLE_CLIENT_ID: required('GOOGLE_CLIENT_ID'),
   GOOGLE_CLIENT_SECRET: required('GOOGLE_CLIENT_SECRET'),
   GOOGLE_OAUTH_REDIRECT_URI: required('GOOGLE_OAUTH_REDIRECT_URI'),
