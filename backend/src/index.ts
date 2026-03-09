@@ -1,11 +1,10 @@
 import { createServer, type ServerResponse } from 'node:http';
-import { env } from './env.js';
 import { randomToken, sign, verifySigned } from './crypto.js';
 import { buildGoogleAuthUrl, exchangeCodeForTokens, fetchGoogleUserInfo } from './google-oauth.js';
+import { applyCors } from './lib/cors.js';
+import { env } from './lib/env.js';
+import { OAUTH_STATE_COOKIE, SESSION_COOKIE, setCookie } from './lib/session.js';
 import { store } from './store.js';
-
-const SESSION_COOKIE = 'app_session';
-const OAUTH_STATE_COOKIE = 'oauth_state';
 
 function parseCookies(rawCookie: string | undefined): Record<string, string> {
   if (!rawCookie) return {};
@@ -17,28 +16,9 @@ function parseCookies(rawCookie: string | undefined): Record<string, string> {
   }, {});
 }
 
-function setCookie(name: string, value: string, options: { maxAgeSeconds?: number; clear?: boolean } = {}): string {
-  const parts = [`${name}=${encodeURIComponent(value)}`, 'Path=/', 'HttpOnly', 'SameSite=Lax'];
-  if (env.NODE_ENV === 'production') parts.push('Secure');
-  if (options.clear) parts.push('Max-Age=0');
-  if (options.maxAgeSeconds) parts.push(`Max-Age=${options.maxAgeSeconds}`);
-  return parts.join('; ');
-}
-
 function json(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(body));
-}
-
-function applyCors(res: ServerResponse, origin: string | undefined): void {
-  const allowedOrigin = env.FRONTEND_BASE_URL;
-  if (origin && origin === allowedOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  }
 }
 
 const server = createServer(async (req, res) => {
@@ -72,14 +52,14 @@ const server = createServer(async (req, res) => {
       const callbackError = requestUrl.searchParams.get('error');
 
       if (callbackError) {
-        res.writeHead(302, { Location: `${env.FRONTEND_BASE_URL}/?authError=google_denied` });
+        res.writeHead(302, { Location: `${env.FRONTEND_URL}/?authError=google_denied` });
         res.end();
         return;
       }
 
       const storedState = cookies[OAUTH_STATE_COOKIE] ? verifySigned(cookies[OAUTH_STATE_COOKIE]) : null;
       if (!code || !state || !storedState || state !== storedState) {
-        res.writeHead(302, { Location: `${env.FRONTEND_BASE_URL}/?authError=invalid_state` });
+        res.writeHead(302, { Location: `${env.FRONTEND_URL}/?authError=invalid_state` });
         res.end();
         return;
       }
@@ -97,7 +77,7 @@ const server = createServer(async (req, res) => {
 
       const session = store.createSession(userInfo.sub);
       res.writeHead(302, {
-        Location: `${env.FRONTEND_BASE_URL}/?auth=success`,
+        Location: `${env.FRONTEND_URL}/?auth=success`,
         'Set-Cookie': [
           setCookie(SESSION_COOKIE, sign(session.sessionId), { maxAgeSeconds: 60 * 60 * 24 * 7 }),
           setCookie(OAUTH_STATE_COOKIE, '', { clear: true }),
