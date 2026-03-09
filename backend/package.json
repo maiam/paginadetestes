@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch --experimental-strip-types src/index.ts",
-    "build": "node -e \"console.log('backend build: no-op')\"",
-    "start": "node --experimental-strip-types src/index.ts"
+    "build": "npx tsc -p tsconfig.json",
+    "start": "node dist/index.js"
   }
 }
